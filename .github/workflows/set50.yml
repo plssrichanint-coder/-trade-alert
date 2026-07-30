@@ -1,0 +1,42 @@
+name: SET50 Daily Screener
+
+on:
+  schedule:
+    # 12:00 UTC = 19:00 ไทย (หลัง SET ปิด 16:30) จันทร์-ศุกร์
+    - cron: "0 12 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: alert            # ใช้ lane เดียวกับ alert.yml กัน git push ชนกัน
+  cancel-in-progress: false
+
+jobs:
+  set50:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Run SET50 screener
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: python set50_alert.py
+
+      - name: Save state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase || true
+          git add set50_state.json
+          git commit -m "update set50 state [skip ci]" || echo "no change"
+          git push || echo "nothing to push"
