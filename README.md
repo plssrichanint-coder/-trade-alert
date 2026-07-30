@@ -4,10 +4,18 @@
 **ไม่ต้องเปิดคอม ไม่ต้องเปิด MT5** (ใช้ข้อมูล yfinance)
 
 ## ไฟล์ในโฟลเดอร์นี้
-- `alert_cloud.py` — สคริปต์หลัก (สมอง SuperTrend v2 เดียวกับ EA)
+- `alert_cloud.py` — ทอง/BTC H4 (สมอง SuperTrend v2 เดียวกับ EA) ทุก 30 นาที
+- `set50_alert.py` — **สแกนหุ้น SET50 (D1) หาสัญญาณ SuperTrend v2** วันละครั้งหลังตลาดปิด
 - `requirements.txt` — yfinance, pandas
-- `alert_state.json` — จำสัญญาณล่าสุด (กันเตือนซ้ำ)
-- `.github/workflows/alert.yml` — ตัวตั้งเวลา GitHub Actions
+- `alert_state.json` / `set50_state.json` — จำสัญญาณล่าสุด (กันเตือนซ้ำ)
+- `.github/workflows/alert.yml` — ตัวตั้งเวลาทอง/BTC (cron */30)
+- `.github/workflows/set50.yml` — ตัวตั้งเวลา SET50 (cron 12:00 UTC = 19:00 ไทย จ-ศ)
+
+### 📈 SET50 screener (เพิ่ม 2026-07-30)
+- สแกน 50 หุ้น SET50 (`.BK`) บน **D1** — SuperTrend flip + EMA200 regime → เด้ง Telegram เฉพาะตัวที่เพิ่งให้สัญญาณเข้า (BUY/SELL) รวมเป็นข้อความเดียว
+- **validate แล้ว: backtest 6 ปี ทั้ง universe PF 1.41** (793 เทรด, net +129R) = มี edge จริง (trend-follower)
+- ⚠️ สูตร SuperTrend อยู่ 4 ไฟล์แล้ว (auto_trader/server/alert_cloud/**set50_alert**) — จูนต้องแก้ให้ตรงกันทุกไฟล์
+- ใช้ Secrets + chat เดียวกับทอง/BTC — ไม่ต้องตั้งใหม่. ทดสอบรันเลย: Actions → **SET50 Daily Screener** → Run workflow
 
 ---
 
