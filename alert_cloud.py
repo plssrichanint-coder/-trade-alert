@@ -12,6 +12,7 @@ try:
 except Exception:
     pass
 import urllib.request, urllib.parse
+from datetime import datetime, timezone, timedelta
 import pandas as pd
 import yfinance as yf
 
@@ -19,6 +20,8 @@ TOKEN = os.environ.get("TG_BOT_TOKEN", "")
 CHAT  = os.environ.get("TG_CHAT_ID", "")
 STATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "alert_state.json")
 WATCH = [("XAU ทอง", "GC=F"), ("BTC", "BTC-USD")]
+DAILY_HOUR_ICT = 8        # ส่งสรุปรายวันรอบแรกที่รันหลังเวลานี้ (เวลาไทย ICT = UTC+7)
+DAILY_KEY = "_daily"      # key ใน state สำหรับ dedup heartbeat (ไม่ชนกับ ticker)
 
 
 def supertrend(h, l, c, period=10, mult=3.0):
@@ -122,12 +125,14 @@ def main():
             state = json.load(f)
     except Exception:
         state = {}
+    latest = []   # เก็บผลล่าสุดของแต่ละ symbol ไว้ทำสรุปรายวัน
     for name, ticker in WATCH:
         try:
             r = fetch_4h(ticker)
             if r is None or len(r) < 50:
                 print("%-10s ไม่มีข้อมูลพอ" % name); continue
             e = evaluate(r)
+            latest.append((name, e))
             print("%-10s %-4s last=%s SL=%s ADX=%s bar=%s" %
                   (name, e["sig"], e["last"], e["sl"], e["adx"], e["bar"]))
             if e["sig"] in ("BUY", "SELL") and state.get(ticker) != e["bar"]:
@@ -140,8 +145,33 @@ def main():
                     state[ticker] = e["bar"]; print("   -> ส่ง alert แล้ว")
         except Exception as ex:
             print("%-10s error: %s" % (name, ex))
+
+    daily_heartbeat(state, latest)
+
     with open(STATE, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2)
+
+
+def daily_heartbeat(state, latest):
+    """ยิงสรุปสถานะวันละครั้ง (รอบแรกที่รันหลัง DAILY_HOUR_ICT) แม้เป็น WAIT
+    เพื่อยืนยันว่า cloud alert ยังทำงานอยู่ — dedup ด้วยวันที่ (เวลาไทย)."""
+    now_ict = datetime.now(timezone.utc) + timedelta(hours=7)
+    today = now_ict.strftime("%Y-%m-%d")
+    if now_ict.hour < DAILY_HOUR_ICT or state.get(DAILY_KEY) == today:
+        return
+    if not latest:
+        print("  (ยังไม่มีข้อมูล symbol -> ข้ามสรุปรายวัน)"); return
+    icon = {"BUY": "🟢", "SELL": "🔴", "WAIT": "⚪"}
+    lines = []
+    for name, e in latest:
+        lines.append("%s <b>%s</b> %s — ราคา %s · ADX %s · เทรนด์ %s"
+                     % (icon.get(e["sig"], "⚪"), e["sig"], name, e["last"], e["adx"], e["trend"]))
+    msg = ("📊 <b>สรุปสถานะรายวัน</b> (SuperTrend H4)\n🕗 %s ICT\n—\n%s\n—\n"
+           "✅ ระบบ alert ทำงานปกติ (ข้อความนี้ยืนยันว่า cloud ยังรันอยู่)\n"
+           "จะเด้งเตือน BUY/SELL แยกอีกครั้งเมื่อมีสัญญาณ flip จริง"
+           % (now_ict.strftime("%Y-%m-%d %H:%M"), "\n".join(lines)))
+    if tg_send(msg):
+        state[DAILY_KEY] = today; print("   -> ส่งสรุปรายวันแล้ว")
 
 
 if __name__ == "__main__":
