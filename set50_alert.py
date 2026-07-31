@@ -14,6 +14,7 @@ try:
 except Exception:
     pass
 import urllib.request, urllib.parse
+from datetime import datetime, timezone, timedelta
 import pandas as pd
 import yfinance as yf
 
@@ -129,13 +130,13 @@ def main():
             state = json.load(f)
     except Exception:
         state = {}
-    hits = []
+    hits = []; scanned_ok = 0; last_bar = ""
     for t in SET50:
         try:
             r = fetch_daily(t)
             if r is None or len(r) < 60:
                 print("%-8s ไม่มีข้อมูลพอ" % t); continue
-            e = evaluate(r)
+            e = evaluate(r); scanned_ok += 1; last_bar = e["bar"]
             print("%-8s %-4s last=%s SL=%s ADX=%s bar=%s" %
                   (t, e["sig"], e["last"], e["sl"], e["adx"], e["bar"]))
             if e["sig"] in ("BUY", "SELL") and state.get(t) != e["bar"]:
@@ -159,6 +160,24 @@ def main():
                     del state[t]
     else:
         print("ไม่มี flip ใหม่วันนี้")
+
+    # --- heartbeat รายวัน (เช็คระบบ) — ส่งครั้งเดียว/วัน แม้ไม่มีสัญญาณ ---
+    now_ict = datetime.now(timezone.utc) + timedelta(hours=7)
+    today = now_ict.strftime("%Y-%m-%d")
+    if scanned_ok > 0 and state.get("_hb") != today:
+        if hits:
+            sig_txt = "วันนี้พบ %d สัญญาณใหม่: %s" % (
+                len(hits), ", ".join(("🟢" if e["sig"] == "BUY" else "🔴") + t for t, e in hits))
+        else:
+            sig_txt = "วันนี้ไม่มีสัญญาณใหม่ (ทุกตัว WAIT)"
+        hb = ("🩺 <b>SET50 เช็คระบบ</b> (SuperTrend D1)\n🕗 %s ICT · แท่ง %s\n—\n"
+              "สแกน %d/%d ตัว — %s\n—\n"
+              "✅ ระบบทำงานปกติ (ข้อความนี้ยืนยัน cloud ยังรันอยู่)\n"
+              "🛈 นี่คือข้อความเช็คระบบ ไม่ใช่สัญญาณเทรด — สัญญาณซื้อ/ขายจริงจะเด้งแยกหัวข้อ 📊"
+              % (now_ict.strftime("%Y-%m-%d %H:%M"), last_bar, scanned_ok, len(SET50), sig_txt))
+        if tg_send(hb):
+            state["_hb"] = today; print("   -> ส่ง heartbeat แล้ว")
+
     with open(STATE, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2, ensure_ascii=False)
 
