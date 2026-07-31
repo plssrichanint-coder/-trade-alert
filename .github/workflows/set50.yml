@@ -3,7 +3,7 @@ name: SET50 Daily Screener
 on:
   schedule:
     # 12:00 UTC = 19:00 ไทย (หลัง SET ปิด 16:30) จันทร์-ศุกร์
-        - cron: "17 12 * * 1-5"
+        - cron: "15 1 * * 1-5"
   workflow_dispatch:
 
 permissions:
