@@ -146,7 +146,7 @@ def main():
         except Exception as ex:
             print("%-10s error: %s" % (name, ex))
 
-    daily_heartbeat(state, latest)
+    # daily_heartbeat(state, latest)  # ตัด heartbeat/bot-alive ออก 2026-08-12 (user ขอ)
 
     with open(STATE, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2)
