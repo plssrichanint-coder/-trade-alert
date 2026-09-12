@@ -19,7 +19,8 @@ import yfinance as yf
 TOKEN = os.environ.get("TG_BOT_TOKEN", "")
 CHAT  = os.environ.get("TG_CHAT_ID", "")
 STATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "alert_state.json")
-WATCH = [("XAU ทอง", "GC=F"), ("BTC", "BTC-USD")]
+# 2026-09-12: ตัด BTC ออก (ยังไม่มี EA เจ๋ง / เลิก demo-forward — user สั่ง) เหลือแต่ทอง
+WATCH = [("XAU ทอง", "GC=F")]
 DAILY_HOUR_ICT = 8        # ส่งสรุปรายวันรอบแรกที่รันหลังเวลานี้ (เวลาไทย ICT = UTC+7)
 DAILY_KEY = "_daily"      # key ใน state สำหรับ dedup heartbeat (ไม่ชนกับ ticker)
 
@@ -138,7 +139,7 @@ def main():
             if e["sig"] in ("BUY", "SELL") and state.get(ticker) != e["bar"]:
                 head = "🟢 <b>BUY</b>" if e["sig"] == "BUY" else "🔴 <b>SELL</b>"
                 msg = ("%s — %s H4\nแท่ง: %s\nราคา: <b>%s</b>\nSL (เส้น ST): %s\nADX: %s\n"
-                       "(ข้อมูล yfinance ≈ ทองโลก/BTC — ไปเปิดออเดอร์ใน MT5 จริงเอง)\n"
+                       "(ข้อมูล yfinance ≈ ทองโลก — ไปเปิดออเดอร์ใน MT5 จริงเอง)\n"
                        "⚠️ สัญญาณเทคนิค ไม่ใช่คำรับประกัน"
                        % (head, name, e["bar"], e["last"], e["sl"], e["adx"]))
                 if tg_send(msg):
